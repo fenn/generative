@@ -3,8 +3,10 @@ import copy
 import numpy
 import Image
 import pygame
+import cairo
 import random
 import math
+from collections import defaultdict
 '''
 shch generative system
 ----------------------
@@ -31,6 +33,9 @@ scale=2
 fatness = 20*scale
 width = 1024*scale
 height = 600*scale
+draw_pygame=True
+draw_cairo=True
+cairo_lines=defaultdict(list)
 
 def sampling(width, height):
     '''really this should probably be a class, but i couldnt figure out how to inherit from numpy.array'''
@@ -40,9 +45,30 @@ def render_buffer(buffer):
     Image.frombuffer('L',(width, height), numpy.array(buffer*255, dtype=numpy.uint8).data, 'raw', 'L', 0, 1).save(open('buffer.png','w'))
     
 def screenshot():
-    f = open('screenshot.png', 'w')
-    pygame.image.save(pygame.display.get_surface(), f)
-    print "saved screenshot"
+    global surface, cr
+    f = open('pygame_screenshot.png', 'w')
+    if draw_pygame:
+        pygame.image.save(pygame.display.get_surface(), f)
+        print "saved pygame screenshot"
+    if draw_cairo:  #bleck
+        for particle in particles:
+            trace = cairo_lines[particle]
+            cr.move_to(trace[0][0][0], trace[0][0][1])
+            for n in range(len(trace)):
+                try:
+                    cr.set_line_width(trace[n][2]+8)
+                    cr.line_to(trace[n][0][0], trace[n][0][1])
+                    cr.line_to(trace[n+1][0][0], trace[n+1][0][1])
+                    cr.line_to(trace[n+2][0][0], trace[n+2][0][1])
+                    cr.set_source_rgba(0,0,0,1)
+                    cr.stroke_preserve()
+                    cr.set_line_width(trace[n][2])
+                    cr.set_source_rgba(particle.color[0], particle.color[1], particle.color[2], 1)
+                    cr.stroke()
+                except IndexError: pass
+        surface.write_to_png('cairo_screenshot.png')
+        surface.finish()
+        print "saved cairo screenshot"
         
 class Particle:
     def __init__(self, position=[0,0], momentum = [0,0], line_width=1, color=(0,0,0), parent = None):
@@ -70,16 +96,42 @@ class Particle:
     def branch(self):
         baby = Particle(self.position, self.momentum, self.line_width, self)
         particles.append(baby)
-    def draw(self, buffer):
-        x_binned, y_binned = int(self.position[0]), int(self.position[1])
-        print "particle #%d x: %.2f, y: %.2f, mx: %.2f, my: %.2f" % (particles.index(self), self.position[0], self.position[1], self.momentum[0], self.momentum[1])
-        if x_binned < width and y_binned < height and x_binned >= 0 and y_binned >= 0:
-            print 'hi'
-            buffer[x_binned][y_binned] += self.mass
+    def draw(self, buffer=buffer, screen=None, cr=None):
+        global cairo_lines
+        #x_binned, y_binned = int(self.position[0]), int(self.position[1])
+        #print "particle #%d x: %.2f, y: %.2f, mx: %.2f, my: %.2f" % (particles.index(self), self.position[0], self.position[1], self.momentum[0], self.momentum[1])
+        #if x_binned < width and y_binned < height and x_binned >= 0 and y_binned >= 0:
+        #    buffer[x_binned][y_binned] += self.mass
+        velocity = math.sqrt(self.momentum[0]**2+self.momentum[1]**2)+0.01
+        line_width = min(fatness, int(fatness/velocity)+1)
+        outline_width = line_width + 8
+        start, end = (int(self.old_position[0]), int(self.old_position[1])), (int(self.position[0]), int(self.position[1]))
+        if draw_pygame:
+            pygame.draw.line(screen, (0,0,0), start, end, outline_width)
+            pygame.draw.line(screen, self.color, start, end, line_width)
+            if draw_cairo:
+                cairo_lines[self].append((start, end, line_width))
+            blah ='''
+            cr.set_line_cap(cairo.LINE_CAP_ROUND)
+            cr.move_to(start[0],start[1])
+            cr.line_to(end[0], end[1])
+            cr.set_source_rgba(0,0,0,1)
+            cr.set_line_width(outline_width)
+            cr.stroke_preserve()
+            cr.set_source_rgba(self.color[0], self.color[1], self.color[2], 1)
+            cr.set_line_width(line_width)
+            cr.stroke()
+            '''
+        
+
+    
+
+
 
 buffer = sampling(width, height)
 
 def main():
+    global surface, cr
     #foo = Particle([0,0],[.2,.1])
     pygame.init()
     screen = pygame.display.set_mode((width, height))
@@ -100,7 +152,18 @@ def main():
     screen = pygame.display.set_mode((width, height))
     white = (255, 255, 255)
     black = (0,0,0)
-
+    
+    #initialize cairo
+    surface = cairo.SVGSurface('cairo_screenshot.svg', width, height)
+    cr = cairo.Context(surface)
+    cr.translate(0.5, 0.5)
+    cr.set_source_rgba(0,0,0,0)
+    cr.rectangle(0,0,width,height)
+    cr.fill()  
+    cr.rectangle(0,0,100,100)
+    cr.set_source_rgba(1,1,1,1)
+    cr.fill()
+    
     for i in range(20):
         if i % 2 > 0: col = white
         else: col = (255,255,0)
@@ -119,11 +182,7 @@ def main():
         #screen.fill(white)
         for p in particles:
             p.update(particles, dt)
-            velocity = math.sqrt(p.momentum[0]**2+p.momentum[1]**2)+0.01
-            line_width = min(fatness, int(fatness/velocity)+1)
-            start, end = (int(p.old_position[0]), int(p.old_position[1])), (int(p.position[0]), int(p.position[1]))
-            pygame.draw.line(screen, black, start, end, line_width+8) #outline
-            pygame.draw.line(screen, p.color, start, end, line_width)
+            p.draw(buffer=buffer,screen=screen, cr=cr)
         pygame.display.flip()
 
 
