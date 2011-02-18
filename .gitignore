@@ -1,0 +1,5 @@
+/.ikiwiki
+*.pyc
+*~
+*.svg
+*.png
