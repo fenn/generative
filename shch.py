@@ -28,13 +28,13 @@ this can be attained by setting the impulse imparted to a function of the local 
 
 particles = []  #list of all particles
 sim_time = 50
-dt = 30
+dt = 3
 scale=2
 fatness = 20*scale
 width = 1024*scale
 height = 600*scale
 draw_pygame=True
-draw_cairo=False
+draw_cairo=True
 cairo_lines=defaultdict(list)
 
 def sampling(width, height):
@@ -51,15 +51,16 @@ def screenshot():
         pygame.image.save(pygame.display.get_surface(), f)
         print "saved pygame screenshot"
     if draw_cairo:  #bleck
-        for particle in particles:
-            trace = cairo_lines[particle]
-            cr.move_to(trace[0][0][0], trace[0][0][1])
-            for n in range(len(trace)):
+        for n in range(len(cairo_lines.values()[0])-3): #only works if all traces have same number of segments
+            for particle in particles:
+                trace = cairo_lines[particle]
+                cr.move_to(trace[0][0][0], trace[0][0][1])
                 try:
                     cr.set_line_width(trace[n][2]+8)
-                    cr.line_to(trace[n][0][0], trace[n][0][1])
+                    cr.move_to(trace[n][0][0], trace[n][0][1])
                     cr.line_to(trace[n+1][0][0], trace[n+1][0][1])
                     cr.line_to(trace[n+2][0][0], trace[n+2][0][1])
+                    cr.line_to(trace[n+3][0][0], trace[n+3][0][1])
                     cr.set_source_rgba(0,0,0,1)
                     cr.stroke_preserve()
                     cr.set_line_width(trace[n][2])
@@ -103,15 +104,14 @@ class Particle:
         #if x_binned < width and y_binned < height and x_binned >= 0 and y_binned >= 0:
         #    buffer[x_binned][y_binned] += self.mass
         velocity = math.sqrt(self.momentum[0]**2+self.momentum[1]**2)+0.01
-        line_width = min(fatness, int(fatness/velocity)+1)
+        line_width = min(fatness, fatness/velocity+1)
         outline_width = line_width + 8
-        start, end = (int(self.old_position[0]), int(self.old_position[1])), (int(self.position[0]), int(self.position[1]))
+        start, end = (self.old_position[0], self.old_position[1]), (self.position[0], self.position[1])
         if draw_pygame:
             pygame.draw.line(screen, (0,0,0), start, end, outline_width)
             pygame.draw.line(screen, self.color, start, end, line_width)
             if draw_cairo:
                 cairo_lines[self].append((start, end, line_width))
-
 
 buffer = sampling(width, height)
 
@@ -120,7 +120,7 @@ def main():
     #foo = Particle([0,0],[.2,.1])
     pygame.init()
     screen = pygame.display.set_mode((width, height))
-    
+
     # Initialize PyGame
     pygame.init()
     pygame.display.set_caption('Particle Sim')
