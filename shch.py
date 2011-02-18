@@ -1,5 +1,4 @@
 #!/usr/bin/python
-from __future__ import division
 import copy
 import numpy
 import Image
@@ -29,13 +28,13 @@ this can be attained by setting the impulse imparted to a function of the local 
 
 particles = []  #list of all particles
 sim_time = 50
-dt = 3
+dt = 30
 scale=2
 fatness = 20*scale
 width = 1024*scale
 height = 600*scale
 draw_pygame=True
-draw_cairo=True
+draw_cairo=False
 cairo_lines=defaultdict(list)
 
 def sampling(width, height):
@@ -54,43 +53,19 @@ def screenshot():
     if draw_cairo:  #bleck
         for particle in particles:
             trace = cairo_lines[particle]
-            n=0; dn=1
-            max_n = len(trace)
-            while n+dn < len(trace):
-                a = (n/max_n)
-                cr.set_line_cap(cairo.LINE_CAP_BUTT)
-                cr.set_line_join(cairo.LINE_JOIN_MITER)
+            cr.move_to(trace[0][0][0], trace[0][0][1])
+            for n in range(len(trace)):
                 try:
-                        #do outline along 2 segments
-                        dx, dy, dn = 0, 0, 1
-                        cr.set_line_width(trace[n][2]+8)
-                        cr.set_line_cap(cairo.LINE_CAP_BUTT)
-                        cr.move_to(trace[n][0][0], trace[n][0][1])
-                        #really short moves makes antialiased garbage
-                        while abs(dx) <4 and abs(dy) <4 and dn < 100 and n+dn<len(trace):
-                            dx = trace[n+dn][0][0] - trace[n][0][0]
-                            dy = trace[n+dn][0][1] - trace[n][0][1]
-                            dn += 1
-                        if n+dn > len(trace): break
-                        print dx, dy, dn
-                        cr.rel_line_to(2*dx, 2*dy)
-                        #cr.line_to(trace[n+dn][0][0], trace[n+dn][0][1])
-                        cr.set_source_rgba(0,0,0, 1)
-                        cr.stroke()
-                        cr.set_source_rgba(particle.color[0], particle.color[1], particle.color[2], 1)
-                        cr.set_line_width(trace[n][2])
-                        #paint colored fill over 4 (or more) segments to cover antialiasing junk
-                        cr.set_line_cap(cairo.LINE_CAP_BUTT)
-                        cr.move_to(trace[n-dn][0][0], trace[n-dn][0][1])
-                        cr.rel_line_to(dx, dy)
-                        cr.rel_line_to(dx, dy)
-                        #cr.line_to(trace[n][0][0], trace[n][0][1])
-                        #cr.line_to(trace[n+dn][0][0], trace[n+dn][0][1])
-                        #cr.line_to(trace[n+2*dn][0][0], trace[n+2*dn][0][1])
-                        cr.stroke()
-                except IndexError: print 'overshoot:', n, 'out of', max_n, 'particle', particles.index(particle), 'dn', dn, 'velocity', trace[n][2]
-                n += dn
-        #print cairo_lines.items()[0]
+                    cr.set_line_width(trace[n][2]+8)
+                    cr.line_to(trace[n][0][0], trace[n][0][1])
+                    cr.line_to(trace[n+1][0][0], trace[n+1][0][1])
+                    cr.line_to(trace[n+2][0][0], trace[n+2][0][1])
+                    cr.set_source_rgba(0,0,0,1)
+                    cr.stroke_preserve()
+                    cr.set_line_width(trace[n][2])
+                    cr.set_source_rgba(particle.color[0], particle.color[1], particle.color[2], 1)
+                    cr.stroke()
+                except IndexError: pass
         surface.write_to_png('cairo_screenshot.png')
         surface.finish()
         print "saved cairo screenshot"
@@ -128,9 +103,9 @@ class Particle:
         #if x_binned < width and y_binned < height and x_binned >= 0 and y_binned >= 0:
         #    buffer[x_binned][y_binned] += self.mass
         velocity = math.sqrt(self.momentum[0]**2+self.momentum[1]**2)+0.01
-        line_width = min(fatness, fatness/velocity+1)
+        line_width = min(fatness, int(fatness/velocity)+1)
         outline_width = line_width + 8
-        start, end = (self.old_position[0], self.old_position[1]), (self.position[0], self.position[1])
+        start, end = (int(self.old_position[0]), int(self.old_position[1])), (int(self.position[0]), int(self.position[1]))
         if draw_pygame:
             pygame.draw.line(screen, (0,0,0), start, end, outline_width)
             pygame.draw.line(screen, self.color, start, end, line_width)
