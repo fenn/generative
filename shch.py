@@ -34,7 +34,7 @@ fatness = 20*scale
 width = 1024*scale
 height = 600*scale
 draw_pygame=True
-draw_cairo=True
+draw_cairo=False
 cairo_lines=defaultdict(list)
 
 def sampling(width, height):
@@ -111,21 +111,6 @@ class Particle:
             pygame.draw.line(screen, self.color, start, end, line_width)
             if draw_cairo:
                 cairo_lines[self].append((start, end, line_width))
-            blah ='''
-            cr.set_line_cap(cairo.LINE_CAP_ROUND)
-            cr.move_to(start[0],start[1])
-            cr.line_to(end[0], end[1])
-            cr.set_source_rgba(0,0,0,1)
-            cr.set_line_width(outline_width)
-            cr.stroke_preserve()
-            cr.set_source_rgba(self.color[0], self.color[1], self.color[2], 1)
-            cr.set_line_width(line_width)
-            cr.stroke()
-            '''
-        
-
-    
-
 
 
 buffer = sampling(width, height)
@@ -136,16 +121,6 @@ def main():
     pygame.init()
     screen = pygame.display.set_mode((width, height))
     
-    blah = '''for step in range(sim_time/dt):
-        for particle in particles: 
-            particle.update(dt)
-            particle.draw(buffer)
-    #        print buffer
-    #        time.sleep(0.1)
-    print buffer
-    for particle in particles: particle.draw(buffer)
-    #render_buffer(buffer)'''
-
     # Initialize PyGame
     pygame.init()
     pygame.display.set_caption('Particle Sim')
