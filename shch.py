@@ -7,6 +7,7 @@ import cairo
 import random
 import math
 from collections import defaultdict
+import yaml
 '''
 shch generative system
 ----------------------
@@ -26,20 +27,26 @@ two behaviors, one type follows the local offset, the other goes in a circle or 
 this can be attained by setting the impulse imparted to a function of the local conditions
 '''
 
-particles = []  #list of all particles
+num_particles = 2
 sim_time = 50
 dt = 3
-scale=2
+scale=1
 fatness = 20*scale
 width = 1024*scale
 height = 600*scale
 draw_pygame=True
 draw_cairo=True
 cairo_lines=defaultdict(list)
+particles = []  #list of all particles
 
 def sampling(width, height):
     '''really this should probably be a class, but i couldnt figure out how to inherit from numpy.array'''
     return numpy.zeros((width, height), dtype=numpy.int)
+
+def rotate(vec, theta):
+    x, y = vec[0], vec[1]
+    #theta = 2*math.pi * theta/360
+    return [x*math.cos(theta)-y*math.sin(theta), x*math.sin(theta)+y*math.cos(theta)]
 
 def render_buffer(buffer):
     Image.frombuffer('L',(width, height), numpy.array(buffer*255, dtype=numpy.uint8).data, 'raw', 'L', 0, 1).save(open('buffer.png','w'))
@@ -82,11 +89,13 @@ class Particle:
         self.line_width = 1
         self.decay_types = []
         self.age = 0
+        self.toggle = False
         self.path_integral = 0
         particles.append(self)
     def update(self, particles, dt=1):
         '''will need to change this to update all particles at once for speed'''
         self.old_position = copy.copy(self.position)
+        self.age +=dt
         self.position[0] += self.velocity[0] * dt
         self.position[1] += self.velocity[1] * dt
         for p in particles:
@@ -97,10 +106,21 @@ class Particle:
             self.velocity[0] += dx / (self.mass * d**2) #inverse square law
             self.velocity[1] += dy / (self.mass * d**2)
         self.speed = math.sqrt(self.velocity[0]**2+self.velocity[1]**2)+0.01 #just keeping track
-            
+        if self.age % 1000 > 500 and self.toggle: #only branch once per 2000 (?) turns
+            self.branch()
+            self.toggle = False
+        else:
+            if self.age % 1000 < 500: self.toggle = True
+
+
     def branch(self):
-        baby = Particle(self.position, self.velocity, self.line_width, self)
+        print yaml.dump(self)
+        baby = Particle(position=self.position, velocity=self.velocity, color=self.color, line_width=self.line_width, parent=self)
         particles.append(baby)
+        baby.velocity = rotate(baby.velocity, 15)
+        self.velocity = rotate(self.velocity, -15)
+        print 'branch', self.age
+        
     def draw(self, buffer=buffer, screen=None, cr=None):
         global cairo_lines
         #x_binned, y_binned = int(self.position[0]), int(self.position[1])
@@ -142,7 +162,7 @@ def main():
     cr.set_source_rgba(1,1,1,1)
     cr.fill()
     
-    for i in range(20):
+    for i in range(num_particles):
         if i % 2 > 0: col = white
         else: col = (255,255,0)
         p = Particle((random.randint(1, width-1), random.randint(1, height-1)), color=col)
