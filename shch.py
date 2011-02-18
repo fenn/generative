@@ -72,39 +72,42 @@ def screenshot():
         print "saved cairo screenshot"
         
 class Particle:
-    def __init__(self, position=[0,0], momentum = [0,0], line_width=1, color=(0,0,0), parent = None):
+    def __init__(self, position=[0,0], velocity = [0,0], line_width=1, color=(0,0,0), parent = None):
         global particles
-        self.momentum = numpy.array(momentum, dtype=float)
+        self.velocity = numpy.array(velocity, dtype=float)
         self.position = numpy.array(position, dtype=float)
         self.old_position = position
         self.color = color
         self.mass = 1
         self.line_width = 1
         self.decay_types = []
+        self.age = 0
+        self.path_integral = 0
         particles.append(self)
     def update(self, particles, dt=1):
         '''will need to change this to update all particles at once for speed'''
         self.old_position = copy.copy(self.position)
-        self.position[0] += self.momentum[0] * dt
-        self.position[1] += self.momentum[1] * dt
+        self.position[0] += self.velocity[0] * dt
+        self.position[1] += self.velocity[1] * dt
         for p in particles:
             dx = p.position[0] - self.position[0]
             dy = p.position[1] - self.position[1]
             d = math.sqrt(dx**2 + dy**2)
             if d == 0: d=1
-            self.momentum[0] += dx / d**2 #inverse square law
-            self.momentum[1] += dy / d**2
+            self.velocity[0] += dx / (self.mass * d**2) #inverse square law
+            self.velocity[1] += dy / (self.mass * d**2)
+        self.speed = math.sqrt(self.velocity[0]**2+self.velocity[1]**2)+0.01 #just keeping track
+            
     def branch(self):
-        baby = Particle(self.position, self.momentum, self.line_width, self)
+        baby = Particle(self.position, self.velocity, self.line_width, self)
         particles.append(baby)
     def draw(self, buffer=buffer, screen=None, cr=None):
         global cairo_lines
         #x_binned, y_binned = int(self.position[0]), int(self.position[1])
-        #print "particle #%d x: %.2f, y: %.2f, mx: %.2f, my: %.2f" % (particles.index(self), self.position[0], self.position[1], self.momentum[0], self.momentum[1])
+        #print "particle #%d x: %.2f, y: %.2f, mx: %.2f, my: %.2f" % (particles.index(self), self.position[0], self.position[1], self.velocity[0], self.velocity[1])
         #if x_binned < width and y_binned < height and x_binned >= 0 and y_binned >= 0:
         #    buffer[x_binned][y_binned] += self.mass
-        velocity = math.sqrt(self.momentum[0]**2+self.momentum[1]**2)+0.01
-        line_width = min(fatness, fatness/velocity+1)
+        line_width = min(fatness, fatness/self.speed+1)
         outline_width = line_width + 8
         start, end = (self.old_position[0], self.old_position[1]), (self.position[0], self.position[1])
         if draw_pygame:
