@@ -27,7 +27,7 @@ two behaviors, one type follows the local offset, the other goes in a circle or 
 this can be attained by setting the impulse imparted to a function of the local conditions
 '''
 
-num_particles = 2
+num_particles = 5
 sim_time = 50
 dt = 3
 scale=1
@@ -45,8 +45,8 @@ def sampling(width, height):
 
 def rotate(vec, theta):
     x, y = vec[0], vec[1]
-    #theta = 2*math.pi * theta/360
-    return [x*math.cos(theta)-y*math.sin(theta), x*math.sin(theta)+y*math.cos(theta)]
+    theta = 2*math.pi * theta/360
+    return numpy.array([x*math.cos(theta)-y*math.sin(theta), x*math.sin(theta)+y*math.cos(theta)], dtype=float)
 
 def render_buffer(buffer):
     Image.frombuffer('L',(width, height), numpy.array(buffer*255, dtype=numpy.uint8).data, 'raw', 'L', 0, 1).save(open('buffer.png','w'))
@@ -79,14 +79,15 @@ def screenshot():
         print "saved cairo screenshot"
         
 class Particle:
-    def __init__(self, position=[0,0], velocity = [0,0], line_width=1, color=(0,0,0), parent = None):
+    def __init__(self, position=[0,0], velocity = [0,0], line_width=1, color=(0,0,0), parent = None, charge = 1, mass = 1):
         global particles
         self.velocity = numpy.array(velocity, dtype=float)
-        self.position = numpy.array(position, dtype=float)
+        self.position =numpy.array(position, dtype=float)
         self.old_position = position
         self.color = color
-        self.mass = 1
-        self.line_width = 1
+        self.charge = charge
+        self.mass = mass
+        self.line_width = line_width
         self.decay_types = []
         self.age = 0
         self.toggle = False
@@ -105,8 +106,9 @@ class Particle:
             if d == 0: d=1
             self.velocity[0] += dx / (self.mass * d**2) #inverse square law
             self.velocity[1] += dy / (self.mass * d**2)
+            self.velocity = rotate(self.velocity, 0.5*self.charge)
         self.speed = math.sqrt(self.velocity[0]**2+self.velocity[1]**2)+0.01 #just keeping track
-        if self.age % 1000 > 500 and self.toggle: #only branch once per 2000 (?) turns
+        if self.age % 1000 > 500 and self.toggle: #only branch once per 500 (?) turns
             self.branch()
             self.toggle = False
         else:
@@ -114,12 +116,12 @@ class Particle:
 
 
     def branch(self):
+        return #branching didnt work so well
         print yaml.dump(self)
         baby = Particle(position=self.position, velocity=self.velocity, color=self.color, line_width=self.line_width, parent=self)
         particles.append(baby)
-        baby.velocity = rotate(baby.velocity, 15)
-        self.velocity = rotate(self.velocity, -15)
-        print 'branch', self.age
+        #baby.velocity =  0.5*rotate(baby.velocity, 15) 
+        #self.velocity = 0.5*rotate(self.velocity, -15) 
         
     def draw(self, buffer=buffer, screen=None, cr=None):
         global cairo_lines
@@ -163,9 +165,13 @@ def main():
     cr.fill()
     
     for i in range(num_particles):
-        if i % 2 > 0: col = white
-        else: col = (255,255,0)
-        p = Particle((random.randint(1, width-1), random.randint(1, height-1)), color=col)
+        if i % 2 > 0: 
+            col = white
+            charge = 0
+        else: 
+            col = (255,255,0)
+            charge = -1
+        p = Particle((random.randint(1, width-1), random.randint(1, height-1)), color=col, charge = charge)
         #particles.append(p)
 
     while True:
