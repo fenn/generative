@@ -1,3 +1,6 @@
+#!/usr/bin/python
+
+'''
 shch generative system
 ----------------------
 
@@ -14,3 +17,4 @@ leaf - line width increases/decreases according to some function, with a given s
 
 two behaviors, one type follows the local offset, the other goes in a circle or spiral
 this can be attained by setting the impulse imparted to a function of the local conditions
+'''
