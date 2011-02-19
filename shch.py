@@ -7,7 +7,9 @@ import cairo
 import random
 import math
 from collections import defaultdict
-import yaml
+import psyco
+
+psyco.full()
 '''
 shch generative system
 ----------------------
@@ -106,7 +108,7 @@ class Particle:
             if d == 0: d=1
             self.velocity[0] += dx / (self.mass * d**2) #inverse square law
             self.velocity[1] += dy / (self.mass * d**2)
-            self.velocity = rotate(self.velocity, 0.5*self.charge)
+            self.velocity = rotate(self.velocity, 0.5)
         self.speed = math.sqrt(self.velocity[0]**2+self.velocity[1]**2)+0.01 #just keeping track
         if self.age % 1000 > 500 and self.toggle: #only branch once per 500 (?) turns
             self.branch()
@@ -117,7 +119,6 @@ class Particle:
 
     def branch(self):
         return #branching didnt work so well
-        print yaml.dump(self)
         baby = Particle(position=self.position, velocity=self.velocity, color=self.color, line_width=self.line_width, parent=self)
         particles.append(baby)
         #baby.velocity =  0.5*rotate(baby.velocity, 15) 
@@ -129,7 +130,7 @@ class Particle:
         #print "particle #%d x: %.2f, y: %.2f, mx: %.2f, my: %.2f" % (particles.index(self), self.position[0], self.position[1], self.velocity[0], self.velocity[1])
         #if x_binned < width and y_binned < height and x_binned >= 0 and y_binned >= 0:
         #    buffer[x_binned][y_binned] += self.mass
-        line_width = min(fatness, fatness/self.speed+1)
+        line_width = min(fatness, fatness/self.speed**2+1)
         outline_width = line_width + 8
         start, end = (self.old_position[0], self.old_position[1]), (self.position[0], self.position[1])
         if draw_pygame:
