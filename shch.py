@@ -31,9 +31,16 @@ this can be attained by setting the impulse imparted to a function of the local 
 
 num_particles = 5
 sim_time = 50
-dt = 3
+dt = .2
+beta = 0
+wobble = .1
+max_wobble = 10
 scale=1
-fatness = 20*scale
+fatness = 100*scale
+min_fatness = 3
+branching = True
+branch_velocity = 1
+max_branches = 4
 width = 1024*scale
 height = 600*scale
 draw_pygame=True
@@ -50,6 +57,10 @@ def rotate(vec, theta):
     theta = 2*math.pi * theta/360
     return numpy.array([x*math.cos(theta)-y*math.sin(theta), x*math.sin(theta)+y*math.cos(theta)], dtype=float)
 
+def random_color():
+    rgb = lambda: random.randint(0,255)
+    return [rgb(), rgb(), rgb()]
+
 def render_buffer(buffer):
     Image.frombuffer('L',(width, height), numpy.array(buffer*255, dtype=numpy.uint8).data, 'raw', 'L', 0, 1).save(open('buffer.png','w'))
     
@@ -60,9 +71,14 @@ def screenshot():
         pygame.image.save(pygame.display.get_surface(), f)
         print "saved pygame screenshot"
     if draw_cairo:  #bleck
-        for n in range(len(cairo_lines.values()[0])-3): #only works if all traces have same number of segments
+        max_len=0
+        for particle in particles: max_len = max(max_len, len(cairo_lines[particle]))
+        for n in range(max_len-3): #only works if all traces have same number of segments?
             for particle in particles:
                 trace = cairo_lines[particle]
+                cr.set_line_join(cairo.LINE_JOIN_ROUND)
+                if n == 0: cr.set_line_cap(cairo.LINE_CAP_ROUND)
+                else: cr.set_line_cap(cairo.LINE_CAP_BUTT)
                 cr.move_to(trace[0][0][0], trace[0][0][1])
                 try:
                     cr.set_line_width(trace[n][2]+8)
@@ -81,8 +97,10 @@ def screenshot():
         print "saved cairo screenshot"
         
 class Particle:
-    def __init__(self, position=[0,0], velocity = [0,0], line_width=1, color=(0,0,0), parent = None, charge = 1, mass = 1):
+    def __init__(self, position=[0,0], velocity = [0,0], line_width=1, color=[0,0,0], parent = None, charge = 1, mass = 1):
         global particles
+        try: self.id = particles[-1].id+1
+        except IndexError: self.id=0
         self.velocity = numpy.array(velocity, dtype=float)
         self.position =numpy.array(position, dtype=float)
         self.old_position = position
@@ -92,37 +110,52 @@ class Particle:
         self.line_width = line_width
         self.decay_types = []
         self.age = 0
-        self.toggle = False
+        self.age_ticks = 0
+        self.toggle = True
         self.path_integral = 0
+        self.baby = None
+        self.parent = parent
+        self.speed = 1
+        self.rank = 0
         particles.append(self)
     def update(self, particles, dt=1):
         '''will need to change this to update all particles at once for speed'''
         self.old_position = copy.copy(self.position)
         self.age +=dt
+        self.age_ticks +=1
         self.position[0] += self.velocity[0] * dt
         self.position[1] += self.velocity[1] * dt
         for p in particles:
+            if p.parent == self or self.parent == p: attract = -1
+            else: attract = 1
             dx = p.position[0] - self.position[0]
             dy = p.position[1] - self.position[1]
             d = math.sqrt(dx**2 + dy**2)
             if d == 0: d=1
-            self.velocity[0] += dx / (self.mass * d**2) #inverse square law
-            self.velocity[1] += dy / (self.mass * d**2)
-            self.velocity = rotate(self.velocity, 0.5)
-        self.speed = math.sqrt(self.velocity[0]**2+self.velocity[1]**2)+0.01 #just keeping track
-        if self.age % 1000 > 500 and self.toggle: #only branch once per 500 (?) turns
-            self.branch()
-            self.toggle = False
-        else:
-            if self.age % 1000 < 500: self.toggle = True
-
-
+            self.velocity[0] += attract * dx / (self.mass * d**1.5) #inverse square law
+            self.velocity[1] += attract * dy / (self.mass * d**1.5)
+            self.velocity = rotate(self.velocity, beta*self.charge+random.uniform(-1*wobble,wobble)*min(self.speed**2, max_wobble))
+            #self.velocity = rotate(self.velocity, beta*self.charge+random.uniform(-1*wobble,wobble))
+            self.speed = math.sqrt(self.velocity[0]**2+self.velocity[1]**2)+0.01 #just keeping track
+        for i in range(3):
+            self.color[i] = (self.color[i]+0.1)% 255
+        #branch probability proportional to age:
+        if 0.999**self.age*random.uniform(0,1) < 0.02 and self.rank < max_branches: self.branch()
+        
     def branch(self):
-        return #branching didnt work so well
+        if not branching: return
         baby = Particle(position=self.position, velocity=self.velocity, color=self.color, line_width=self.line_width, parent=self)
+        baby.velocity = self.velocity
+        baby.age = self.age
+        baby.speed = self.speed
+        baby.toggle = False
+        self.rank += 1
+        baby.rank = self.rank
+        self.baby = baby
         particles.append(baby)
-        #baby.velocity =  0.5*rotate(baby.velocity, 15) 
-        #self.velocity = 0.5*rotate(self.velocity, -15) 
+        baby.velocity =  branch_velocity*rotate(baby.velocity, 15) 
+        self.velocity = branch_velocity*rotate(self.velocity, -15) 
+        #print 'branch', self.age
         
     def draw(self, buffer=buffer, screen=None, cr=None):
         global cairo_lines
@@ -130,8 +163,10 @@ class Particle:
         #print "particle #%d x: %.2f, y: %.2f, mx: %.2f, my: %.2f" % (particles.index(self), self.position[0], self.position[1], self.velocity[0], self.velocity[1])
         #if x_binned < width and y_binned < height and x_binned >= 0 and y_binned >= 0:
         #    buffer[x_binned][y_binned] += self.mass
-        line_width = min(fatness, fatness/self.speed**2+1)
-        outline_width = line_width + 8
+        #line_width = min(fatness, dt*fatness/(math.log(self.age_ticks+1)*self.speed)+1)
+        #line_width = min(fatness, dt*fatness/(self.age**2+1)*self.speed+min_fatness)
+        line_width = min(fatness, dt*fatness/(((self.rank)**2+1)*self.speed)+min_fatness)
+        outline_width = line_width + 4
         start, end = (self.old_position[0], self.old_position[1]), (self.position[0], self.position[1])
         if draw_pygame:
             pygame.draw.line(screen, (0,0,0), start, end, outline_width)
@@ -151,8 +186,8 @@ def main():
     pygame.init()
     pygame.display.set_caption('Particle Sim')
     screen = pygame.display.set_mode((width, height))
-    white = (255, 255, 255)
-    black = (0,0,0)
+    white = [255, 255, 255]
+    black = [0,0,0]
     
     #initialize cairo
     surface = cairo.SVGSurface('cairo_screenshot.svg', width, height)
@@ -161,18 +196,18 @@ def main():
     cr.set_source_rgba(0,0,0,0)
     cr.rectangle(0,0,width,height)
     cr.fill()  
-    cr.rectangle(0,0,100,100)
-    cr.set_source_rgba(1,1,1,1)
-    cr.fill()
     
     for i in range(num_particles):
         if i % 2 > 0: 
             col = white
-            charge = 0
+            charge = 1
+            mass = 1
         else: 
-            col = (255,255,0)
+            col = [255,255,0]
             charge = -1
-        p = Particle((random.randint(1, width-1), random.randint(1, height-1)), color=col, charge = charge)
+            mass =1
+        col = random_color()
+        p = Particle((random.randint(1, width-1), random.randint(1, height-1)), color=col, charge = charge, mass=mass)
         #particles.append(p)
 
     while True:
