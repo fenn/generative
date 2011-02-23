@@ -29,18 +29,18 @@ two behaviors, one type follows the local offset, the other goes in a circle or 
 this can be attained by setting the impulse imparted to a function of the local conditions
 '''
 
-num_particles = 5
+num_particles = 3
 sim_time = 50
-dt = .2
+dt = 1
 beta = 0
 wobble = .1
 max_wobble = 10
-scale=1
+scale=2
 fatness = 100*scale
 min_fatness = 3
 branching = True
 branch_velocity = 1
-max_branches = 4
+max_branches = 2
 width = 1024*scale
 height = 600*scale
 draw_pygame=True
@@ -126,21 +126,21 @@ class Particle:
         self.position[0] += self.velocity[0] * dt
         self.position[1] += self.velocity[1] * dt
         for p in particles:
-            if p.parent == self or self.parent == p: attract = -1
+            if p.parent == self or self.parent == p: attract = -.2
             else: attract = 1
             dx = p.position[0] - self.position[0]
             dy = p.position[1] - self.position[1]
             d = math.sqrt(dx**2 + dy**2)
             if d == 0: d=1
-            self.velocity[0] += attract * dx / (self.mass * d**1.5) #inverse square law
-            self.velocity[1] += attract * dy / (self.mass * d**1.5)
+            self.velocity[0] += attract * dx / (self.mass * d**2) #inverse square law
+            self.velocity[1] += attract * dy / (self.mass * d**2)
             self.velocity = rotate(self.velocity, beta*self.charge+random.uniform(-1*wobble,wobble)*min(self.speed**2, max_wobble))
             #self.velocity = rotate(self.velocity, beta*self.charge+random.uniform(-1*wobble,wobble))
             self.speed = math.sqrt(self.velocity[0]**2+self.velocity[1]**2)+0.01 #just keeping track
         for i in range(3):
-            self.color[i] = (self.color[i]+0.1)% 255
+            self.color[i] = (self.color[i]+0.001)% 255
         #branch probability proportional to age:
-        if 0.999**self.age*random.uniform(0,1) < 0.02 and self.rank < max_branches: self.branch()
+        if 0.999**self.age*random.uniform(0,1) < 0.005 and self.rank < max_branches: self.branch()
         
     def branch(self):
         if not branching: return
@@ -151,6 +151,8 @@ class Particle:
         baby.toggle = False
         self.rank += 1
         baby.rank = self.rank
+#        self.mass = self.mass/1.2
+#        baby.mass = self.mass
         self.baby = baby
         particles.append(baby)
         baby.velocity =  branch_velocity*rotate(baby.velocity, 15) 
@@ -165,7 +167,8 @@ class Particle:
         #    buffer[x_binned][y_binned] += self.mass
         #line_width = min(fatness, dt*fatness/(math.log(self.age_ticks+1)*self.speed)+1)
         #line_width = min(fatness, dt*fatness/(self.age**2+1)*self.speed+min_fatness)
-        line_width = min(fatness, dt*fatness/(((self.rank)**2+1)*self.speed)+min_fatness)
+        #line_width = min(fatness, dt*fatness/(((self.rank)**2+1)*self.speed)+min_fatness)
+        line_width = min(fatness, fatness/(((self.age**0.5)+1)*(self.speed+1)*dt)+min_fatness)
         outline_width = line_width + 4
         start, end = (self.old_position[0], self.old_position[1]), (self.position[0], self.position[1])
         if draw_pygame:
