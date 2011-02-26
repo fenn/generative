@@ -52,6 +52,14 @@ def sampling(width, height):
     '''really this should probably be a class, but i couldnt figure out how to inherit from numpy.array'''
     return numpy.zeros((width, height), dtype=numpy.int)
 
+def multinomial(pdict):
+    '''return an item i from a dict {i:p, j:q} with probability p/(p+q)'''
+    ptotal = sum(pdict.values())
+    plist = pdict.items()
+    a = list(numpy.random.multinomial(1,[p[1]/ptotal for p in plist])) #looks like [0, 0, 1, 0]
+    try: return plist[a.index(1)][0]    
+    except ValueError: return None
+
 def rotate(vec, theta):
     x, y = vec[0], vec[1]
     theta = 2*math.pi * theta/360
@@ -108,7 +116,7 @@ class Particle:
         self.charge = charge
         self.mass = mass
         self.line_width = line_width
-        self.decay_types = []
+        self.decay_types = {}
         self.age = 0
         self.age_ticks = 0
         self.toggle = True
@@ -117,6 +125,7 @@ class Particle:
         self.parent = parent
         self.speed = 1
         self.rank = 0
+        self.decay_probability = 0.001
         particles.append(self)
     def update(self, particles, dt=1):
         '''will need to change this to update all particles at once for speed'''
@@ -139,9 +148,11 @@ class Particle:
             self.speed = math.sqrt(self.velocity[0]**2+self.velocity[1]**2)+0.01 #just keeping track
         for i in range(3):
             self.color[i] = (self.color[i]+0.001)% 255
-        #branch probability proportional to age:
-        if 0.999**self.age*random.uniform(0,1) < 0.005 and self.rank < max_branches: self.branch()
-        
+        self.decay()
+    def decay(self):
+        if random.uniform(0,1)>= 1-self.decay_probability:
+            print 'decay:', multinomial(self.decay_types)
+            
     def branch(self):
         if not branching: return
         baby = Particle(position=self.position, velocity=self.velocity, color=self.color, line_width=self.line_width, parent=self)
@@ -155,8 +166,8 @@ class Particle:
 #        baby.mass = self.mass
         self.baby = baby
         particles.append(baby)
-        baby.velocity =  branch_velocity*rotate(baby.velocity, 15) 
-        self.velocity = branch_velocity*rotate(self.velocity, -15) 
+        baby.velocity =  branch_velocity*rotate(baby.velocity, self.branch_angle) 
+        self.velocity = branch_velocity*rotate(self.velocity, -1*self.branch_angle) 
         #print 'branch', self.age
         
     def draw(self, buffer=buffer, screen=None, cr=None):
@@ -176,6 +187,22 @@ class Particle:
             pygame.draw.line(screen, self.color, start, end, line_width)
             if draw_cairo:
                 cairo_lines[self].append((start, end, line_width))
+
+
+class Neuron(Particle):
+    def __init__(self, *args, **kwargs):
+        Particle.__init__(self, *args, **kwargs)
+        self.decay_types = {Soma:1}
+
+class Soma(Particle):
+    def __init__(self, *args, **kwargs):
+        Particle.__init__(self, *args, **kwargs)
+        self.decay_types = {Dendrite: 0.1,
+                                        Axon: 0.9}
+        self.decay_probability = 0.001
+    def update(self):
+        self.age += dt
+
 
 buffer = sampling(width, height)
 
@@ -210,7 +237,7 @@ def main():
             charge = -1
             mass =1
         col = random_color()
-        p = Particle((random.randint(1, width-1), random.randint(1, height-1)), color=col, charge = charge, mass=mass)
+        p = Neuron((random.randint(1, width-1), random.randint(1, height-1)), color=col, charge = charge, mass=mass)
         #particles.append(p)
 
     while True:
