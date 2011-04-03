@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from __future__ import division
 import copy
 import numpy
 import Image
@@ -35,12 +36,14 @@ dt = 1
 beta = 0
 wobble = .1
 max_wobble = 10
-scale=2
+scale=1
 fatness = 100*scale
 min_fatness = 3
 branching = True
 branch_velocity = 1
 max_branches = 2
+mouse_play = True
+box_fill = 0.3 # bounding box to fill with particles at initial conditions
 width = 1024*scale
 height = 600*scale
 draw_pygame=True
@@ -129,6 +132,7 @@ class Particle:
         particles.append(self)
     def update(self, particles, dt=1):
         '''will need to change this to update all particles at once for speed'''
+        global blackhole
         self.old_position = copy.copy(self.position)
         self.age +=dt
         self.age_ticks +=1
@@ -147,7 +151,7 @@ class Particle:
             #self.velocity = rotate(self.velocity, beta*self.charge+random.uniform(-1*wobble,wobble))
             self.speed = math.sqrt(self.velocity[0]**2+self.velocity[1]**2)+0.01 #just keeping track
         for i in range(3):
-            self.color[i] = (self.color[i]+0.001)% 255
+            self.color[i] = (self.color[i]+0.01)% 255
         self.decay()
     def decay(self):
         if random.uniform(0,1)>= 1-self.decay_probability:
@@ -179,7 +183,7 @@ class Particle:
         #line_width = min(fatness, dt*fatness/(math.log(self.age_ticks+1)*self.speed)+1)
         #line_width = min(fatness, dt*fatness/(self.age**2+1)*self.speed+min_fatness)
         #line_width = min(fatness, dt*fatness/(((self.rank)**2+1)*self.speed)+min_fatness)
-        line_width = min(fatness, fatness/(((self.age**0.5)+1)*(self.speed+1)*dt)+min_fatness)
+        line_width = min(fatness, fatness/(((self.age**0.5)+1)*(self.speed+1)*dt+0.001)+min_fatness)
         outline_width = line_width + 4
         start, end = (self.old_position[0], self.old_position[1]), (self.position[0], self.position[1])
         if draw_pygame:
@@ -203,11 +207,23 @@ class Soma(Particle):
     def update(self):
         self.age += dt
 
+class MouseControlled(Particle):
+    def draw(self, buffer=buffer, screen=None, cr=None):
+        pass
+    def update(self, particles, dt):
+            for event in pygame.event.get():
+                if event.type == pygame.MOUSEMOTION:
+                    if mouse_play:
+                        self.position = [event.pos[0], event.pos[1]]
+                        self.velocity = [0,0]
+
 
 buffer = sampling(width, height)
 
 def main():
+    global dt
     global surface, cr
+    global blackhole
     #foo = Particle([0,0],[.2,.1])
     pygame.init()
     screen = pygame.display.set_mode((width, height))
@@ -237,9 +253,9 @@ def main():
             charge = -1
             mass =1
         col = random_color()
-        p = Neuron((random.randint(1, width-1), random.randint(1, height-1)), color=col, charge = charge, mass=mass)
+        p = Neuron([random.uniform(box_fill*width, width-box_fill*width), random.uniform(box_fill*height, height-box_fill*height)], color=col, charge = charge, mass=mass)
         #particles.append(p)
-
+    blackhole = MouseControlled(position=[width/2, height/2], color=[9,9,9])
     while True:
         # Handle events
         for event in pygame.event.get():
@@ -247,6 +263,10 @@ def main():
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
                     pygame.quit()
+                if event.key == pygame.K_DOWN:
+                    dt /= 1.2
+                if event.key == pygame.K_UP:
+                    dt *= 1.2
                 if event.key == pygame.K_s:
                     screenshot()
         #screen.fill(white)
