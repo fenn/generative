@@ -41,7 +41,7 @@ fatness = 100*scale
 min_fatness = 3
 branching = True
 branch_velocity = 1
-max_branches = 2
+max_branches = 1
 mouse_play = True
 box_fill = 0.3 # bounding box to fill with particles at initial conditions
 width = 1024*scale
@@ -72,16 +72,11 @@ def random_color():
     rgb = lambda: random.randint(0,255)
     return [rgb(), rgb(), rgb()]
 
-def build_palette(step):
+def build_palette(age):
     "build a color rotation palette. it is a list with 256 RGB triplets"
-    #loop = range(256)
-    #first we create a 256-element array. it goes from 0, to 255, and back to 0
-    ramp = [(x + step) % 255 for x in range(255)]
-    #ramp.append(0)
-    #ramp = [abs((x+step*3)%511-255) for x in loop]
-    #using the previous ramp and some other crude math, we make some different
-    #values for each R, G, and B color planes
-    #return [(ramp[x], ramp[(x+32)%256], (x+step)%256) for x in loop]
+    ramp = [(x + age) % 256 for x in range(256)]
+    ramp[0]=0 #black stays black
+    #return [(ramp[x], ramp[(x+23)%256], (x+step)%256) for x in range(256)]
     return [(x, x, x) for x in ramp]
 
 def render_buffer(buffer):
@@ -138,6 +133,7 @@ class Particle:
         self.path_integral = 0
         self.baby = None
         self.parent = parent
+        self.branch_angle = 15
         self.speed = 1
         self.rank = 0
         self.decay_probability = 0.001
@@ -168,9 +164,12 @@ class Particle:
     def decay(self):
         if random.uniform(0,1)>= 1-self.decay_probability:
             print 'decay:', multinomial(self.decay_types)
+            if self.rank < max_branches:
+                self.branch()
             
     def branch(self):
         if not branching: return
+        print "branching", self.id
         baby = Particle(position=self.position, velocity=self.velocity, color=self.color, line_width=self.line_width, parent=self)
         baby.velocity = self.velocity
         baby.age = self.age
@@ -268,6 +267,7 @@ def main():
         #particles.append(p)
     blackhole = MouseControlled(position=[width/2, height/2], color=[9,9,9])
     step = 0
+    age = 0
     print 'SCREEN: hardware=%d, depth=%d' % \
                   (screen.get_flags()&pygame.HWSURFACE, screen.get_bitsize())
     while True:
@@ -289,12 +289,12 @@ def main():
             p.draw(buffer=buffer,screen=screen, cr=cr)
         pygame.display.flip()
         
-        palette = build_palette(step)
+        palette = build_palette(age)
         screen.set_palette(palette)
         #not that we needn't flip() or update() the
         #display when only changing the palette
         step += 1
-
+        age += dt
 
 if __name__ == '__main__':
     main()
