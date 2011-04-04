@@ -72,6 +72,18 @@ def random_color():
     rgb = lambda: random.randint(0,255)
     return [rgb(), rgb(), rgb()]
 
+def build_palette(step):
+    "build a color rotation palette. it is a list with 256 RGB triplets"
+    #loop = range(256)
+    #first we create a 256-element array. it goes from 0, to 255, and back to 0
+    ramp = [(x + step) % 255 for x in range(255)]
+    #ramp.append(0)
+    #ramp = [abs((x+step*3)%511-255) for x in loop]
+    #using the previous ramp and some other crude math, we make some different
+    #values for each R, G, and B color planes
+    #return [(ramp[x], ramp[(x+32)%256], (x+step)%256) for x in loop]
+    return [(x, x, x) for x in ramp]
+
 def render_buffer(buffer):
     Image.frombuffer('L',(width, height), numpy.array(buffer*255, dtype=numpy.uint8).data, 'raw', 'L', 0, 1).save(open('buffer.png','w'))
     
@@ -225,13 +237,12 @@ def main():
     global surface, cr
     global blackhole
     #foo = Particle([0,0],[.2,.1])
-    pygame.init()
-    screen = pygame.display.set_mode((width, height))
 
     # Initialize PyGame
     pygame.init()
+    screen = pygame.display.set_mode((width, height), pygame.HWSURFACE|pygame.HWPALETTE, 8)
+    screen.set_palette(build_palette(0))
     pygame.display.set_caption('Particle Sim')
-    screen = pygame.display.set_mode((width, height))
     white = [255, 255, 255]
     black = [0,0,0]
     
@@ -256,6 +267,9 @@ def main():
         p = Neuron([random.uniform(box_fill*width, width-box_fill*width), random.uniform(box_fill*height, height-box_fill*height)], color=col, charge = charge, mass=mass)
         #particles.append(p)
     blackhole = MouseControlled(position=[width/2, height/2], color=[9,9,9])
+    step = 0
+    print 'SCREEN: hardware=%d, depth=%d' % \
+                  (screen.get_flags()&pygame.HWSURFACE, screen.get_bitsize())
     while True:
         # Handle events
         for event in pygame.event.get():
@@ -274,6 +288,12 @@ def main():
             p.update(particles, dt)
             p.draw(buffer=buffer,screen=screen, cr=cr)
         pygame.display.flip()
+        
+        palette = build_palette(step)
+        screen.set_palette(palette)
+        #not that we needn't flip() or update() the
+        #display when only changing the palette
+        step += 1
 
 
 if __name__ == '__main__':
