@@ -7,7 +7,7 @@ import pygame
 import cairo
 import random
 import math
-from collections import defaultdict
+from collections import defaultdict, deque
 import psyco
 
 psyco.full()
@@ -72,12 +72,17 @@ def random_color():
     rgb = lambda: random.randint(0,255)
     return [rgb(), rgb(), rgb()]
 
-def build_palette(age):
+def build_palette():
     "build a color rotation palette. it is a list with 256 RGB triplets"
-    ramp = [(x + age) % 256 for x in range(256)]
-    ramp[0]=0 #black stays black
-    #return [(ramp[x], ramp[(x+23)%256], (x+step)%256) for x in range(256)]
-    return [(x, x, x) for x in ramp]
+    return [(x, x, x) for x in range(256)]
+
+def rotate_palette(palette, steps):
+    '''palette must be in the format [(0,0,0), ... (x,x,x)] with length 256(?)'''
+    rval = deque(palette)
+    rval.rotate(steps)
+    rval[0]=(0,0,0) #black stays black
+    return rval
+
 
 def render_buffer(buffer):
     Image.frombuffer('L',(width, height), numpy.array(buffer*255, dtype=numpy.uint8).data, 'raw', 'L', 0, 1).save(open('buffer.png','w'))
@@ -240,7 +245,8 @@ def main():
     # Initialize PyGame
     pygame.init()
     screen = pygame.display.set_mode((width, height), pygame.HWSURFACE|pygame.HWPALETTE, 8)
-    screen.set_palette(build_palette(0))
+    palette = build_palette()
+    screen.set_palette(palette)
     pygame.display.set_caption('Particle Sim')
     white = [255, 255, 255]
     black = [0,0,0]
@@ -268,8 +274,6 @@ def main():
     blackhole = MouseControlled(position=[width/2, height/2], color=[9,9,9])
     step = 0
     age = 0
-    print 'SCREEN: hardware=%d, depth=%d' % \
-                  (screen.get_flags()&pygame.HWSURFACE, screen.get_bitsize())
     while True:
         # Handle events
         for event in pygame.event.get():
@@ -283,16 +287,11 @@ def main():
                     dt *= 1.2
                 if event.key == pygame.K_s:
                     screenshot()
-        #screen.fill(white)
         for p in particles:
             p.update(particles, dt)
             p.draw(buffer=buffer,screen=screen, cr=cr)
         pygame.display.flip()
-        
-        palette = build_palette(age)
-        screen.set_palette(palette)
-        #not that we needn't flip() or update() the
-        #display when only changing the palette
+        screen.set_palette(rotate_palette(palette, age%256))
         step += 1
         age += dt
 
