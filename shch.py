@@ -33,9 +33,9 @@ this can be attained by setting the impulse imparted to a function of the local 
 num_particles = 3
 sim_time = 50
 dt = 1
-beta = 0
-wobble = .1
-max_wobble = 10
+beta = 1
+wobble = 0
+max_wobble = 1000
 scale=1
 fatness = 100*scale
 min_fatness = 3
@@ -43,6 +43,7 @@ branching = True
 branch_velocity = 1
 max_branches = 1
 mouse_play = True
+fixed_blackhole = False
 box_fill = 0.3 # bounding box to fill with particles at initial conditions
 width = 1024*scale
 height = 600*scale
@@ -199,7 +200,8 @@ class Particle:
         #line_width = min(fatness, dt*fatness/(math.log(self.age_ticks+1)*self.speed)+1)
         #line_width = min(fatness, dt*fatness/(self.age**2+1)*self.speed+min_fatness)
         #line_width = min(fatness, dt*fatness/(((self.rank)**2+1)*self.speed)+min_fatness)
-        line_width = min(fatness, fatness/(((self.age**0.5)+1)*(self.speed+1)*dt+0.001)+min_fatness)
+        #line_width = min(fatness, fatness/(((self.age**0.5)+1)*(self.speed+1)*dt+0.001)+min_fatness)
+        line_width = min(fatness, fatness/(((self.speed+1)*dt+0.001)+min_fatness))
         outline_width = line_width + 4
         start, end = (self.old_position[0], self.old_position[1]), (self.position[0], self.position[1])
         if draw_pygame:
@@ -271,7 +273,9 @@ def main():
         col = random_color()
         p = Neuron([random.uniform(box_fill*width, width-box_fill*width), random.uniform(box_fill*height, height-box_fill*height)], color=col, charge = charge, mass=mass)
         #particles.append(p)
-    blackhole = MouseControlled(position=[width/2, height/2], color=[9,9,9])
+    if fixed_blackhole: particle_class = MouseControlled
+    else: particle_class = Neuron
+    blackhole = particle_class(position=[width/2, height/2], color=[9,9,9])
     step = 0
     age = 0
     while True:
