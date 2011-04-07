@@ -51,6 +51,8 @@ draw_pygame=True
 draw_cairo=True
 cairo_lines=defaultdict(list)
 particles = []  #list of all particles
+white = [255, 255, 255]
+black = [0,0,0]
 
 def sampling(width, height):
     '''really this should probably be a class, but i couldnt figure out how to inherit from numpy.array'''
@@ -120,6 +122,11 @@ def screenshot():
         surface.finish()
         print "saved cairo screenshot"
         
+def blank_screen():
+    global cairo_lines
+    cairo_lines = defaultdict(list)
+    pygame.draw.rect(pygame.display.get_surface(), black, [0, 0, width, height])
+    
 class Particle:
     def __init__(self, position=[0,0], velocity = [0,0], line_width=1, color=[0,0,0], parent = None, charge = 1, mass = 1):
         global particles
@@ -250,8 +257,6 @@ def main():
     palette = build_palette()
     screen.set_palette(palette)
     pygame.display.set_caption('Particle Sim')
-    white = [255, 255, 255]
-    black = [0,0,0]
     
     #initialize cairo
     surface = cairo.SVGSurface('cairo_screenshot.svg', width, height)
@@ -291,6 +296,8 @@ def main():
                     dt *= 1.2
                 if event.key == pygame.K_s:
                     screenshot()
+                if event.key == pygame.K_b:
+                    blank_screen()
         for p in particles:
             p.update(particles, dt)
             p.draw(buffer=buffer,screen=screen, cr=cr)
