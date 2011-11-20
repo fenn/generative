@@ -2,21 +2,26 @@
 
 import sys, os, pygame, random, math,time
 from pygame.locals import *
-
+pi = math.pi
 if sys.platform == 'win32': #for compatibility on some hardware platforms
     os.environ['SDL_VIDEODRIVER'] = 'windib'
     
 xmax = 1000    #width of window
 ymax = 600     #height of window
 psize = 3      #particle size
+zoom=1
 width=xmax
 height=ymax
-
-
+num_particles=6
+time_zoom=100
+rainbow=True
+ctf = 0.001
+clf = 0.1
+caf = 0.1
 class Particle:
-   def __init__(self, x = 0, y = 0, dx = 0, dy = 0, phase=0, radius=0, col = (255,255,255), decay=0.9):
-       self.x = x+radius*math.cos(phase+time.time())    #absolute x,y in pixel coordinates
-       self.y = y+radius*math.sin(phase+time.time())
+   def __init__(self, x = 0, y = 0, dx = 0, dy = 0, phase=0, radius=0, col = (255,255,255), decay=0.999):
+       self.x = x+radius*math.cos(phase)    #absolute x,y in pixel coordinates
+       self.y = y+radius*math.sin(phase)
        self.old_x, self.old_y = self.x, self.y
        self.rx = x   #absolute x,y in real coordinates
        self.ry = y
@@ -27,20 +32,15 @@ class Particle:
        self.phase=phase
        self.decay=decay
        self.start_time=time.time()
+       self.r_prime = 1
+       self.g_prime = 2
+       self.b_prime = 3
 
    def update(self, points):
        self.old_x, self.old_y = self.x, self.y
-       self.radius = (time.time()-self.start_time)**self.decay
-       self.x = self.x+self.radius*math.cos(self.phase+time.time())    #absolute x,y in pixel coordinates
-       self.y = self.y+self.radius*math.sin(self.phase+time.time())
-
-       dx = 0.0
-       dy = 0.0
-       for p in points:         #where is everybody else?
-           dx1 = p.rx - self.rx
-           dy1 = p.ry - self.ry
-           
-           d = math.sqrt(dx1**2 + dy1**2)   #distance from me to p
+       self.radius = 0.1#(time.time()-self.start_time)#**self.decay
+       self.x = self.x+time_zoom*self.radius*math.cos(self.phase+time_zoom*(time.time()-self.start_time))    #absolute x,y in pixel coordinates
+       self.y = self.y+time_zoom*self.radius*math.sin(self.phase+time_zoom*(time.time()-self.start_time))
 
    def move(self):
        if self.x <= 0:
@@ -59,7 +59,17 @@ class Particle:
 
    def draw(self, screen):
         #pygame.draw.line(screen, self.col, (self.old_x, self.old_y), (self.x, self.y), psize)
-        pygame.draw.line(screen, self.col, (self.x-psize, self.y-psize), (self.x, self.y), psize)
+        #pygame.draw.line(screen, self.col, (self.x-psize, self.y-psize), (self.x, self.y), psize)
+        pygame.draw.line(screen, self.col, (self.old_x*zoom, self.old_y*zoom), (self.x*zoom, self.y*zoom), psize*zoom)
+        tmp_time = time_zoom*(time.time()-self.start_time)
+        #n = ((self.x - self.old_x)**2 + (self.y - self.old_y)**2)**0.5
+        n = self.phase
+        if rainbow:
+            angle = math.atan2(self.y, self.x)/(2*pi)
+            red   = abs(math.sin(2*pi*(self.r_prime/3*ctf*tmp_time+clf*n+caf*angle)))
+            green = abs(math.sin(2*pi*(self.g_prime/3*ctf*tmp_time+clf*n+caf*angle)))
+            blue =  abs(math.sin(2*pi*(self.b_prime/3*ctf*tmp_time+clf*n+caf*angle)))
+            self.col=(255*red, 255*green, 255*blue)
 
        
 def main():
@@ -72,7 +82,7 @@ def main():
    black = (0,0,0)
 
    particles = []
-   for i in range(20):
+   for i in range(num_particles):
        if i % 2 > 0: col = white
        else: col = (255,255,0)
 #       particles.append( Particle(random.randint(1, xmax-1), random.randint(1, ymax-1), 0, 0, col) )
