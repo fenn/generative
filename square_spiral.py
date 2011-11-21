@@ -9,20 +9,20 @@ if sys.platform == 'win32': #for compatibility on some hardware platforms
     
 xmax = 1000    #width of window
 ymax = 600     #height of window
-psize = 20      #particle size
+psize = 5      #particle size
 zoom=1
 width=xmax
 height=ymax
-epicycle_radius = 10
-num_particles=200
-time_zoom=1
+epicycle_radius = 15
+num_particles=500
+time_zoom=0.5
 rainbow=True
 color_rotation=True
-color_rotation_speed=50
+color_rotation_speed=10
 palette_size=4096
-ctf = 0.01
-clf = 0#5/num_particles
-caf = 1
+ctf = 0.1
+clf = 0.5#5/num_particles
+caf = 10.01
 
 class Particle:
    def __init__(self, x = 0, y = 0, dx = 0, dy = 0, phase=0, radius=0, col = (255,255,255), decay=0.999):
@@ -67,7 +67,8 @@ class Particle:
 
    def draw(self, screen):
         #vel = ((self.x - self.old_x)**2 + (self.y - self.old_y)**2)**0.5
-        angle = math.atan2(self.y-height/2, self.x-width/2)#/(2*pi)
+        angle = math.atan2(self.y-height/2, self.x-width/2)/(2*pi)
+	if (angle + 0.7)% 1 < 1/2: angle = 0
         pygame.draw.line(screen, self.col, (self.old_x*zoom, self.old_y*zoom), (self.x*zoom, self.y*zoom), psize*zoom)
         tmp_time = time_zoom*(time.time()-self.start_time)
         n = self.phase
