@@ -9,7 +9,7 @@ if sys.platform == 'win32': #for compatibility on some hardware platforms
     
 xmax = 1000    #width of window
 ymax = 600     #height of window
-psize = 10      #particle size
+psize = 12      #particle size
 zoom=1
 width=xmax
 height=ymax
@@ -18,7 +18,8 @@ num_particles=200
 time_zoom=1
 rainbow=True
 color_rotation=True
-color_rotation_speed=0.5
+color_rotation_speed=50
+palette_size=4096
 ctf = 0.1
 clf = 0.2#5/num_particles
 caf = 0
@@ -77,17 +78,17 @@ class Particle:
             self.col=(255*red, 255*green, 255*blue)
 
 def build_palette():
-    "build a color rotation palette. it is a list with 256 RGB triplets"
+    "build a color rotation palette. it is a list of RGB triplets"
     #return [(x, x, x) for x in range(256)] #black white gradient
     mysin = lambda x: (math.sin(x*2*pi)+1)*255
-    return [(mysin(x*.11)%255, mysin(x*.012)%255, mysin(x*.0013)%255) for x in range(256)] 
+    return [(mysin(x*.011)%255, mysin(x*.0012)%255, mysin(x*.0013)%255) for x in range(palette_size)] 
 
 def rotate_palette(palette, steps):
     '''color rotation palette must be in the format [(0,0,0), ... (x,x,x)] with length 256(?)'''
     rval = deque(palette)
-    rval.rotate(steps)
+    rval.rotate(int(steps))
     rval[0]=(0,0,0) #black stays black
-    return rval
+    return list(rval)[0:255]    
        
 def main():
    # Initialize PyGame
@@ -134,7 +135,7 @@ def main():
 
        toggle += color_rotation_speed
        if color_rotation:
-         screen.set_palette(rotate_palette(palette, 255*(toggle%100)/100.)) #255*time.time()%1024))
+         screen.set_palette(rotate_palette(palette, color_rotation_speed*time.time()%palette_size))
        #time.sleep(time.time()%0.1)    
        pygame.display.flip()
 
