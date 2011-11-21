@@ -9,14 +9,15 @@ if sys.platform == 'win32': #for compatibility on some hardware platforms
     
 xmax = 1000    #width of window
 ymax = 600     #height of window
-psize = 2      #particle size
+psize = 20      #particle size
 zoom=1
 width=xmax
 height=ymax
-num_particles=6
-time_zoom=5
+num_particles=30
+time_zoom=1
 rainbow=True
-ctf = 0.0001
+color_rotation=True
+ctf = 0.01
 clf = 1
 caf = 0.01
 class Particle:
@@ -36,10 +37,12 @@ class Particle:
        self.r_prime = 1
        self.g_prime = 2
        self.b_prime = 3
+       self.next, self.prev = None, None
+
 
    def update(self, points):
        self.old_x, self.old_y = self.x, self.y
-       self.radius = 0.5#(time.time()-self.start_time)#**self.decay
+       self.radius = 3#(time.time()-self.start_time)#**self.decay
        self.x = self.x+time_zoom*self.radius*math.cos(self.phase+time_zoom*(time.time()-self.start_time))    #absolute x,y in pixel coordinates
        self.y = self.y+time_zoom*self.radius*math.sin(self.phase+time_zoom*(time.time()-self.start_time))
 
@@ -59,9 +62,7 @@ class Particle:
        self.y = int(self.ry + 0.5)
 
    def draw(self, screen):
-        #pygame.draw.line(screen, self.col, (self.old_x, self.old_y), (self.x, self.y), psize)
-        #pygame.draw.line(screen, self.col, (self.x-psize, self.y-psize), (self.x, self.y), psize)
-        pygame.draw.line(screen, ([x for x in self.col]), (self.old_x*zoom, self.old_y*zoom), (self.x*zoom, self.y*zoom), psize*zoom)
+        pygame.draw.line(screen, self.col, (self.old_x*zoom, self.old_y*zoom), (self.x*zoom, self.y*zoom), psize*zoom)
         tmp_time = time_zoom*(time.time()-self.start_time)
         #n = ((self.x - self.old_x)**2 + (self.y - self.old_y)**2)**0.5
         n = self.phase
@@ -103,7 +104,14 @@ def main():
        else: col = (255,255,0)
 #       particles.append( Particle(random.randint(1, xmax-1), random.randint(1, ymax-1), 0, 0, col) )
        #particles.append( Particle(width/2, height/2, 0, 0, i/num_particles,width/10, col) )
-       particles.append( Particle(width/2, height/2, 0, 0, i,width/10, col) )
+       p = Particle(width/2, height/2, 0, 0, 2*pi*i/num_particles,width/10, col)
+       try: 
+         tail = particles[-1:][0] # get last element from list
+         p.prev = tail
+         tail.next = p
+       except IndexError: pass 
+       particles.append(p)
+      
 
    exitflag = False
    while not exitflag:
@@ -128,7 +136,8 @@ def main():
            #screen.set_palette(rotate_palette(palette, 255*(toggle%10)/10)) #255*time.time()%1024))	   #pygame.drawrect
        else: pass 
        toggle += 2
-       screen.set_palette(rotate_palette(palette, 255*(toggle%100)/100.)) #255*time.time()%1024))	   #pygame.drawrect
+       if color_rotation:
+         screen.set_palette(rotate_palette(palette, 255*(toggle%100)/100.)) #255*time.time()%1024))	   #pygame.drawrect
        #time.sleep(time.time()%0.1)    
        pygame.display.flip()
 
