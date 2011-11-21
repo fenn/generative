@@ -9,19 +9,19 @@ if sys.platform == 'win32': #for compatibility on some hardware platforms
     
 xmax = 1000    #width of window
 ymax = 600     #height of window
-psize = 5      #particle size
+psize = 6      #particle size
 zoom=1
 width=xmax
 height=ymax
 epicycle_radius = 15
 num_particles=500
-time_zoom=0.5
+time_zoom=0.15
 rainbow=True
 color_rotation=True
 color_rotation_speed=10
 palette_size=4096
 ctf = 0.1
-clf = 0.5#5/num_particles
+clf = 0.1#5/num_particles
 caf = 10.01
 
 class Particle:
