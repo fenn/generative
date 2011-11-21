@@ -10,7 +10,7 @@ if sys.platform == 'win32': #for compatibility on some hardware platforms
 width = 1000
 height = 600
 particle_size = 4
-zoom=1
+zoom=2
 epicycle_radius = 15
 num_particles=500
 time_zoom=0.25
@@ -48,7 +48,7 @@ class Particle:
         #vel = ((self.x - self.old_x)**2 + (self.y - self.old_y)**2)**0.5
         angle = math.atan2(self.y-height/2, self.x-width/2)/(2*pi)
 	if (angle + 0.7)% 1 < (time.time()-self.start_time)*time_zoom % 1: angle = 0 #spiral cuts between clf and caf
-        pygame.draw.line(screen, self.color, (self.old_x*zoom, self.old_y*zoom), (self.x*zoom, self.y*zoom), particle_size*zoom)
+        pygame.draw.line(screen, self.color, (self.old_x*zoom-width/zoom, self.old_y*zoom-height/zoom), (self.x*zoom-width/zoom, self.y*zoom-height/zoom), particle_size*zoom)
         tmp_time = time_zoom*(time.time()-self.start_time)
         n = self.phase
         if rainbow:
