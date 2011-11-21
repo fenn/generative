@@ -9,18 +9,18 @@ if sys.platform == 'win32': #for compatibility on some hardware platforms
     
 xmax = 1000    #width of window
 ymax = 600     #height of window
-psize = 5      #particle size
+psize = 10      #particle size
 zoom=1
 width=xmax
 height=ymax
 epicycle_radius = 10
 num_particles=200
-time_zoom=1
+time_zoom=2
 rainbow=True
 color_rotation=True
-color_rotation_speed=10
-ctf = 0.01
-clf = 1#5/num_particles
+color_rotation_speed=2.1
+ctf = 0.1
+clf = 0.1#5/num_particles
 caf = 0
 
 class Particle:
@@ -79,7 +79,7 @@ class Particle:
 def build_palette():
     "build a color rotation palette. it is a list with 256 RGB triplets"
     #return [(x, x, x) for x in range(256)] #black white gradient
-    return [((x*11)%255, (x*1), (x*5)%255) for x in range(256)] 
+    return [((x*2.1)%255, (x*2)%255, (x*3)%255) for x in range(256)] 
 
 def rotate_palette(palette, steps):
     '''color rotation palette must be in the format [(0,0,0), ... (x,x,x)] with length 256(?)'''
