@@ -1,5 +1,5 @@
 # Particle Simulator
-
+from __future__ import division
 import sys, os, pygame, random, math,time
 from pygame.locals import *
 pi = math.pi
@@ -15,8 +15,8 @@ height=ymax
 num_particles=6
 time_zoom=100
 rainbow=True
-ctf = 0.001
-clf = 0.1
+ctf = 0.0001
+clf = 0.01
 caf = 0.1
 class Particle:
    def __init__(self, x = 0, y = 0, dx = 0, dy = 0, phase=0, radius=0, col = (255,255,255), decay=0.999):
