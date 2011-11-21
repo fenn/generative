@@ -9,17 +9,20 @@ if sys.platform == 'win32': #for compatibility on some hardware platforms
     
 xmax = 1000    #width of window
 ymax = 600     #height of window
-psize = 20      #particle size
+psize = 5      #particle size
 zoom=1
 width=xmax
 height=ymax
-num_particles=30
+epicycle_radius = 10
+num_particles=200
 time_zoom=1
 rainbow=True
 color_rotation=True
+color_rotation_speed=10
 ctf = 0.01
-clf = 1
-caf = 0.01
+clf = 1#5/num_particles
+caf = 0
+
 class Particle:
    def __init__(self, x = 0, y = 0, dx = 0, dy = 0, phase=0, radius=0, col = (255,255,255), decay=0.999):
        self.x = x+radius*math.cos(phase)    #absolute x,y in pixel coordinates
@@ -42,7 +45,7 @@ class Particle:
 
    def update(self, points):
        self.old_x, self.old_y = self.x, self.y
-       self.radius = 3#(time.time()-self.start_time)#**self.decay
+       #self.radius = 3#(time.time()-self.start_time)#**self.decay
        self.x = self.x+time_zoom*self.radius*math.cos(self.phase+time_zoom*(time.time()-self.start_time))    #absolute x,y in pixel coordinates
        self.y = self.y+time_zoom*self.radius*math.sin(self.phase+time_zoom*(time.time()-self.start_time))
 
@@ -62,12 +65,12 @@ class Particle:
        self.y = int(self.ry + 0.5)
 
    def draw(self, screen):
+        #vel = ((self.x - self.old_x)**2 + (self.y - self.old_y)**2)**0.5
+        angle = math.atan2(self.y-height/2, self.x-width/2)#/(2*pi)
         pygame.draw.line(screen, self.col, (self.old_x*zoom, self.old_y*zoom), (self.x*zoom, self.y*zoom), psize*zoom)
         tmp_time = time_zoom*(time.time()-self.start_time)
-        #n = ((self.x - self.old_x)**2 + (self.y - self.old_y)**2)**0.5
         n = self.phase
         if rainbow:
-            angle = math.atan2(self.y, self.x)/(2*pi)
             red   = abs(math.sin(2*pi*(self.r_prime/3*ctf*tmp_time+clf*n+caf*angle)))
             green = abs(math.sin(2*pi*(self.g_prime/3*ctf*tmp_time+clf*n+caf*angle)))
             blue =  abs(math.sin(2*pi*(self.b_prime/3*ctf*tmp_time+clf*n+caf*angle)))
@@ -76,7 +79,7 @@ class Particle:
 def build_palette():
     "build a color rotation palette. it is a list with 256 RGB triplets"
     #return [(x, x, x) for x in range(256)] #black white gradient
-    return [((x*1)%255, (x*2)%255, (x*5)%255) for x in range(256)] 
+    return [((x*11)%255, (x*1), (x*5)%255) for x in range(256)] 
 
 def rotate_palette(palette, steps):
     '''color rotation palette must be in the format [(0,0,0), ... (x,x,x)] with length 256(?)'''
@@ -104,7 +107,7 @@ def main():
        else: col = (255,255,0)
 #       particles.append( Particle(random.randint(1, xmax-1), random.randint(1, ymax-1), 0, 0, col) )
        #particles.append( Particle(width/2, height/2, 0, 0, i/num_particles,width/10, col) )
-       p = Particle(width/2, height/2, 0, 0, 2*pi*i/num_particles,width/10, col)
+       p = Particle(width/2, height/2, 0, 0, 2*pi*i/num_particles,epicycle_radius, col)
        try: 
          tail = particles[-1:][0] # get last element from list
          p.prev = tail
@@ -126,18 +129,11 @@ def main():
        #screen.fill(white)
        for p in particles:
            p.update(particles)
-       #for p in particles:
-           #p.move()
 	   p.draw(screen)
-           #screen.set_palette(rotate_palette(palette, 255*time.time()%1024))	   #pygame.drawrect
-           
-       if (toggle%10 == 0): 
-           pass #toggle = 0
-           #screen.set_palette(rotate_palette(palette, 255*(toggle%10)/10)) #255*time.time()%1024))	   #pygame.drawrect
-       else: pass 
-       toggle += 2
+
+       toggle += color_rotation_speed
        if color_rotation:
-         screen.set_palette(rotate_palette(palette, 255*(toggle%100)/100.)) #255*time.time()%1024))	   #pygame.drawrect
+         screen.set_palette(rotate_palette(palette, 255*(toggle%100)/100.)) #255*time.time()%1024))
        #time.sleep(time.time()%0.1)    
        pygame.display.flip()
 
