@@ -21,7 +21,7 @@ color_rotation=True
 color_rotation_speed=10
 palette_size=4096
 ctf = 0.1
-clf = 0.1#5/num_particles
+clf = 50/num_particles
 caf = 10.01
 
 class Particle:
@@ -68,7 +68,7 @@ class Particle:
    def draw(self, screen):
         #vel = ((self.x - self.old_x)**2 + (self.y - self.old_y)**2)**0.5
         angle = math.atan2(self.y-height/2, self.x-width/2)/(2*pi)
-	if (angle + 0.7)% 1 < 1/2: angle = 0
+	if (angle + 0.7)% 1 < (time.time()-self.start_time)*time_zoom % 1: angle = 0
         pygame.draw.line(screen, self.col, (self.old_x*zoom, self.old_y*zoom), (self.x*zoom, self.y*zoom), psize*zoom)
         tmp_time = time_zoom*(time.time()-self.start_time)
         n = self.phase
